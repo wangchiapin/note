@@ -105,18 +105,22 @@ a.btn{font:inherit;font-size:15px;color:var(--ink);background:var(--card);border
 </dialog>
 
 <dialog id="syncDlg">
-  <h2>雲端同步（Firebase）</h2>
+  <h2>雲端同步</h2>
   <p style="font-size:13px;color:var(--sub);margin:0 0 8px">
-    用 Google 登入後，手機和電腦就會同步。不登入也能用，只是只存在這台裝置。下面是目前使用的 Firebase 設定，一般不用動。</p>
-  <textarea id="cfgTxt" placeholder='const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." };'></textarea>
-  <div class="row">
-    <button id="cfgSave">儲存設定</button>
+    用 Google 登入後，手機和電腦就會同步。不登入也能用，只是只存在這台裝置。</p>
+  <div id="acct" style="font-size:14px;margin:0 0 10px"></div>
+  <div class="row" style="margin-top:0">
     <button class="main" id="loginBtn">Google 登入</button>
     <button id="logoutBtn">登出</button>
     <span class="grow"></span>
     <button onclick="syncDlg.close()">關閉</button>
   </div>
   <div class="hint" id="syncMsg"></div>
+  <details style="margin-top:10px">
+    <summary style="font-size:12px;color:var(--sub);cursor:pointer">進階設定（一般不用動）</summary>
+    <textarea id="cfgTxt" style="margin-top:6px"></textarea>
+    <div class="row"><button id="cfgSave">儲存設定</button><button id="cfgReset">還原預設</button></div>
+  </details>
 </dialog>
 
 <dialog id="ruleDlg">
@@ -408,6 +412,9 @@ function parseCfg(s){
 }
 function setSyncLabel(){
   $("syncBtn").textContent = cloud?.user ? "☁️ 已同步" : "未登入（點我登入）";
+  $("acct").textContent = cloud?.user ? "目前登入："+(cloud.user.email||"（無 email）") : "目前沒有登入";
+  $("loginBtn").style.display = cloud?.user ? "none" : "";
+  $("logoutBtn").style.display = cloud?.user ? "" : "none";
 }
 async function initCloud(){
   const cfg=LS.get("cb_cfg",null)||DEFAULT_CFG;
@@ -432,11 +439,15 @@ async function initCloud(){
     });
   }catch(e){ $("syncMsg").textContent="Firebase 載入失敗："+e.message }
 }
-$("syncBtn").onclick=()=>{ const c=LS.get("cb_cfg",null)||DEFAULT_CFG; $("cfgTxt").value=JSON.stringify(c,null,1); $("syncDlg").showModal() };
+$("syncBtn").onclick=()=>{ const c=LS.get("cb_cfg",null)||DEFAULT_CFG; $("cfgTxt").value=JSON.stringify(c,null,1); setSyncLabel(); $("syncDlg").showModal() };
 $("cfgSave").onclick=()=>{
   const c=parseCfg($("cfgTxt").value);
   if(!c){ $("syncMsg").textContent="看不出設定內容，請整段 firebaseConfig 貼上"; return }
   LS.set("cb_cfg",c); $("syncMsg").textContent="已儲存，重新整理頁面後生效"; setSyncLabel();
+};
+$("cfgReset").onclick=()=>{
+  try{ localStorage.removeItem("cb_cfg") }catch(e){}
+  $("cfgTxt").value=JSON.stringify(DEFAULT_CFG,null,1); $("syncMsg").textContent="已還原預設，重新整理頁面後生效";
 };
 $("loginBtn").onclick=async()=>{
   if(!cloud){ $("syncMsg").textContent="請先儲存設定並重新整理"; return }
