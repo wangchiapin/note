@@ -36,8 +36,16 @@ button.rec{background:var(--danger);color:#fff;border-color:var(--danger)}
 .chip{white-space:nowrap;font-size:13px;padding:5px 12px;border-radius:99px;
   border:1px solid var(--line);background:var(--card);cursor:pointer;color:var(--sub)}
 .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-input.search{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;
-  background:var(--card);font:inherit;font-size:15px;outline:none;margin-bottom:8px}
+.chip.add{border-style:dashed;color:var(--ink)}
+#catEdit{display:none;margin:0 0 8px}
+#catEdit button{font-size:12px;padding:3px 10px;border-radius:99px}
+.searchrow{display:flex;gap:8px;margin-bottom:4px}
+input.search{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--line);border-radius:10px;
+  background:var(--card);font:inherit;font-size:15px;outline:none}
+#rangeRow{display:none;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0;font-size:13px;color:var(--sub)}
+#rangeRow input{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:14px;background:var(--card);color:var(--ink)}
+#rangeRow button{font-size:12px;padding:4px 10px;border-radius:99px}
+.shint{font-size:11px;color:var(--sub);margin:0 0 8px}
 .item{background:var(--card);border:1px solid var(--line);border-radius:12px;
   padding:12px;margin-bottom:10px}
 .item.pin{border-color:var(--accent)}
@@ -45,6 +53,10 @@ input.search{width:100%;padding:9px 12px;border:1px solid var(--line);border-rad
   display:block;margin-bottom:8px;cursor:zoom-in}
 .txt{white-space:pre-wrap;word-break:break-word;font-size:15px}
 .txt a{color:var(--accent)}
+.note{white-space:pre-wrap;word-break:break-word;font-size:13px;color:var(--sub);
+  margin-top:8px;padding:6px 10px;background:var(--bg);border-radius:8px;border-left:3px solid var(--line)}
+.noteedit textarea{border:1px solid var(--line);border-radius:8px;padding:8px;min-height:64px;font-size:14px;background:var(--bg);margin-top:8px}
+.noteedit .row button{font-size:13px;padding:5px 12px}
 .tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
 .tag{font-size:12px;padding:2px 4px 2px 10px;border-radius:99px;background:var(--bg);
   border:1px solid var(--line);color:var(--ink)}
@@ -58,8 +70,8 @@ dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);co
   max-width:520px;width:calc(100% - 32px);padding:16px}
 dialog::backdrop{background:rgba(0,0,0,.3)}
 dialog h2{font-size:16px;margin:0 0 8px}
-dialog textarea{border:1px solid var(--line);border-radius:8px;padding:8px;min-height:90px;font-size:13px}
-dialog input{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;font-size:14px;background:var(--bg)}
+dialog input{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;font-size:14px;background:var(--bg);color:var(--ink)}
+dialog label{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px}
 #imgDlg{max-width:900px}
 #imgDlg img{max-width:100%;border-radius:8px;display:block;margin:0 auto 8px}
 .rule{display:flex;gap:6px;margin:6px 0;font-size:13px;align-items:center}
@@ -72,7 +84,7 @@ a.btn{font:inherit;font-size:15px;color:var(--ink);background:var(--card);border
 <div class="wrap">
   <header>
     <h1>隨手貼</h1>
-    <div class="sync" id="syncBtn">僅存本機</div>
+    <div class="sync" id="syncBtn">未登入（點我登入）</div>
   </header>
 
   <div class="box">
@@ -90,7 +102,17 @@ a.btn{font:inherit;font-size:15px;color:var(--ink);background:var(--card);border
   </div>
 
   <div class="chips" id="chips"></div>
-  <input class="search" id="q" placeholder="搜尋文字、圖片說明或標籤…">
+  <div id="catEdit"><button id="catEditBtn">✎ 編輯這個分類</button></div>
+
+  <div class="searchrow">
+    <input class="search" id="q" placeholder="搜尋文字、備註、標籤或時間…">
+    <button id="rangeBtn" title="選日期範圍">📅</button>
+  </div>
+  <div id="rangeRow">
+    從 <input type="date" id="dFrom"> 到 <input type="date" id="dTo">
+    <button id="rangeClear">清除</button>
+  </div>
+  <div class="shint">可搜時間：今天、昨天、本週、上週、本月、上個月、10/23、10月。可以和文字一起搜，例如「今天 連結」。</div>
   <div id="list"></div>
 
   <div style="text-align:center;margin-top:16px">
@@ -118,6 +140,21 @@ a.btn{font:inherit;font-size:15px;color:var(--ink);background:var(--card);border
   <div class="hint" id="syncMsg"></div>
 </dialog>
 
+<dialog id="catDlg">
+  <h2 id="catTitle">新增分類</h2>
+  <label for="catName">分類名稱（最多 8 個字）</label>
+  <input id="catName" maxlength="8" placeholder="例如：食譜、旅行、客戶">
+  <label for="catKw">自動歸類的關鍵字（可不填，多個用逗號或頓號分開）</label>
+  <input id="catKw" placeholder="例如：食譜、料理、做法">
+  <div class="hint" id="catMsg"></div>
+  <div class="row">
+    <button class="main" id="catSave">儲存</button>
+    <button id="catDel" style="color:var(--danger)">刪除分類</button>
+    <span class="grow"></span>
+    <button onclick="catDlg.close()">取消</button>
+  </div>
+</dialog>
+
 <dialog id="ruleDlg">
   <h2>分類規則</h2>
   <p style="font-size:13px;color:var(--sub);margin:0 0 8px">
@@ -133,8 +170,8 @@ a.btn{font:inherit;font-size:15px;color:var(--ink);background:var(--card);border
 
 <script type="module">
 /* ---------- 基本設定 ---------- */
-const CATS = ["圖片","連結","聯絡方式","記帳","待辦提醒","教學","程式碼","其他"];
-const MAX_AUTO = 3, MAX_TAGS = 5;
+const BUILTIN = ["圖片","連結","聯絡方式","記帳","待辦提醒","教學","程式碼","其他"];
+const MAX_AUTO = 3, MAX_TAGS = 5, SETTINGS_ID = "__settings__";
 // Firebase 專案：perrito-busca-el-tesoro（網頁金鑰本來就是公開的，資料安全靠 Firestore 規則）
 const DEFAULT_CFG = {
   apiKey: "AIzaSyAa58xLAL4dLphvdPEvWYAUfHrjM1kcnoo",
@@ -153,13 +190,18 @@ function norm(it){
   if(!it.cats){ it.cats=[it.cat||"其他"]; delete it.cat }
   if(it.img===undefined) it.img=null;
   if(it.text===undefined) it.text="";
+  if(it.note===undefined) it.note="";
   return it;
 }
 let items = LS.get("cb_items", []).map(norm);
-let rules = LS.get("cb_rules", []);      // [{kw, cat}]
+let rules = LS.get("cb_rules", []);          // [{kw, cat}]
+let customCats = LS.get("cb_cats", []);      // 自訂分類名稱
+let settingsTs = LS.get("cb_settings_ts", 0);
 let filter = "全部";
-let pendingImg = null;                    // 準備要存的圖片（壓縮後 dataURL）
-let cloud = null;                         // {db, auth, fs, user, unsub}
+let pendingImg = null;
+let cloud = null;
+let editingNote = null, noteDraft = "";
+const allCats = () => [...BUILTIN, ...customCats];
 
 /* ---------- 自動分類（回傳多個標籤） ---------- */
 function classify(text, hasImg){
@@ -177,6 +219,38 @@ function classify(text, hasImg){
   }
   if(!out.length) add("其他");
   return out.slice(0,MAX_AUTO);
+}
+
+/* ---------- 時間搜尋 ---------- */
+function dayStart(d){ const x=new Date(d); x.setHours(0,0,0,0); return x }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x }
+function validDate(y,m,d){ const x=new Date(y,m,d); return x.getFullYear()===y && x.getMonth()===m && x.getDate()===d }
+function parseDateToken(tok){
+  const now=new Date(), today=dayStart(now), Y=now.getFullYear();
+  const day=d=>[d.getTime(), addDays(d,1).getTime()-1];
+  const month=(y,m)=>[new Date(y,m,1).getTime(), new Date(y,m+1,1).getTime()-1];
+  if(tok==="今天") return day(today);
+  if(tok==="昨天") return day(addDays(today,-1));
+  if(tok==="前天") return day(addDays(today,-2));
+  const mon=addDays(today,-((today.getDay()+6)%7));        // 本週一
+  if(/^(本週|這週|本周|這周|這禮拜|本禮拜)$/.test(tok)) return [mon.getTime(), addDays(mon,7).getTime()-1];
+  if(/^(上週|上周|上禮拜)$/.test(tok)) return [addDays(mon,-7).getTime(), mon.getTime()-1];
+  if(/^(本月|這個月|這月)$/.test(tok)) return month(Y,now.getMonth());
+  if(/^(上個月|上月)$/.test(tok)) return month(Y,now.getMonth()-1);
+  let m;
+  if((m=tok.match(/^(?:(\d{4})[\/\-.年])?(\d{1,2})[\/\-.月](\d{1,2})[日號号]?$/))){
+    const y=m[1]?+m[1]:Y, mo=+m[2]-1, d=+m[3];
+    return validDate(y,mo,d) ? day(new Date(y,mo,d)) : null;
+  }
+  if((m=tok.match(/^(?:(\d{4})[\/\-.年])?(\d{1,2})月$/)) && +m[2]>=1 && +m[2]<=12) return month(m[1]?+m[1]:Y,+m[2]-1);
+  if((m=tok.match(/^(\d{4})[\/\-.](\d{1,2})$/)) && +m[2]>=1 && +m[2]<=12) return month(+m[1],+m[2]-1);
+  return null;
+}
+function pickerRange(){
+  const f=$("dFrom").value, t=$("dTo").value; if(!f && !t) return null;
+  const a = f ? new Date(f+"T00:00:00").getTime() : 0;
+  const b = t ? new Date(t+"T23:59:59.999").getTime() : Infinity;
+  return [a,b];
 }
 
 /* ---------- 圖片壓縮 ---------- */
@@ -222,6 +296,7 @@ $("prevX").onclick=clearImg;
 $("imgBtn").onclick=()=>$("file").click();
 $("file").onchange=e=>{ const f=e.target.files[0]; if(f) attachFile(f); e.target.value="" };
 document.addEventListener("paste",e=>{
+  if(e.target && e.target.closest && e.target.closest(".noteedit")) return;
   const f=[...(e.clipboardData?.files||[])].find(x=>x.type.startsWith("image/"));
   if(f){ e.preventDefault(); attachFile(f) }
 });
@@ -236,34 +311,56 @@ function fmt(ts){
   return `${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 function renderChips(){
-  const names=["全部","📌 釘選",...CATS];
+  const names=["全部","📌 釘選",...allCats()];
   $("chips").innerHTML = names.map(n=>{
     const count = n==="全部"?items.length : n==="📌 釘選"?items.filter(i=>i.pinned).length : items.filter(i=>i.cats.includes(n)).length;
-    return `<div class="chip ${filter===n?"on":""}" data-n="${n}">${n} ${count}</div>`;
-  }).join("");
-  $("chips").querySelectorAll(".chip").forEach(c=>c.onclick=()=>{filter=c.dataset.n;render()});
+    return `<div class="chip ${filter===n?"on":""}" data-n="${esc(n)}">${esc(n)} ${count}</div>`;
+  }).join("") + `<div class="chip add" id="addCat">＋ 新增分類</div>`;
+  $("chips").querySelectorAll(".chip[data-n]").forEach(c=>c.onclick=()=>{filter=c.dataset.n;render()});
+  $("addCat").onclick=()=>openCatDlg(null);
+  $("catEdit").style.display = customCats.includes(filter) ? "block" : "none";
+}
+function matchItem(i,ranges,texts,pr){
+  if(ranges.length && !ranges.some(([a,b])=>i.ts>=a && i.ts<=b)) return false;
+  if(pr && !(i.ts>=pr[0] && i.ts<=pr[1])) return false;
+  if(texts.length){
+    const hay=(i.text+" "+i.note+" "+i.cats.join(" ")).toLowerCase();
+    if(!texts.every(t=>hay.includes(t))) return false;
+  }
+  return true;
 }
 function render(){
+  if(editingNote){ const ta=document.querySelector(".noteedit textarea"); if(ta) noteDraft=ta.value }
   renderChips();
-  const q=$("q").value.trim().toLowerCase();
+  const toks=$("q").value.trim().split(/\s+/).filter(Boolean);
+  const ranges=[], texts=[];
+  toks.forEach(t=>{ const r=parseDateToken(t); r?ranges.push(r):texts.push(t.toLowerCase()) });
+  const pr=pickerRange();
   let list=[...items].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0) || b.ts-a.ts);
   if(filter==="📌 釘選") list=list.filter(i=>i.pinned);
   else if(filter!=="全部") list=list.filter(i=>i.cats.includes(filter));
-  if(q) list=list.filter(i=>(i.text+" "+i.cats.join(" ")).toLowerCase().includes(q));
-  if(!list.length){ $("list").innerHTML='<div class="empty">還沒有東西</div>'; return; }
+  list=list.filter(i=>matchItem(i,ranges,texts,pr));
+  if(!list.length){ $("list").innerHTML='<div class="empty">沒有符合的東西</div>'; return; }
+  const cats=allCats();
   $("list").innerHTML = list.map(i=>{
-    const left=CATS.filter(c=>!i.cats.includes(c));
+    const left=cats.filter(c=>!i.cats.includes(c));
+    const editing = editingNote===i.id;
     return `
     <div class="item ${i.pinned?"pin":""}" data-id="${i.id}">
       ${i.img?`<img class="thumb" src="${i.img}" data-act="view" alt="">`:""}
       ${i.text?`<div class="txt">${linkify(i.text)}</div>`:""}
+      ${editing
+        ? `<div class="noteedit"><textarea placeholder="寫下備註…">${esc(noteDraft)}</textarea>
+             <div class="row"><button class="main" data-act="notesave">存備註</button><button data-act="notecancel">取消</button></div></div>`
+        : (i.note?`<div class="note">📝 ${linkify(i.note)}</div>`:"")}
       <div class="tags">
-        ${i.cats.map(c=>`<span class="tag">${c}<b data-act="rmtag" data-c="${c}">×</b></span>`).join("")}
-        ${left.length&&i.cats.length<MAX_TAGS?`<select data-act="addtag"><option value="">＋標籤</option>${left.map(c=>`<option>${c}</option>`).join("")}</select>`:""}
+        ${i.cats.map(c=>`<span class="tag">${esc(c)}<b data-act="rmtag" data-c="${esc(c)}">×</b></span>`).join("")}
+        ${left.length&&i.cats.length<MAX_TAGS?`<select data-act="addtag"><option value="">＋標籤</option>${left.map(c=>`<option>${esc(c)}</option>`).join("")}</select>`:""}
       </div>
       <div class="meta">
         <span>${fmt(i.ts)}</span><span class="sp"></span>
         ${i.text?`<button data-act="copy">複製</button>`:""}
+        ${editing?"":`<button data-act="note">${i.note?"編輯備註":"加備註"}</button>`}
         <button data-act="pin">${i.pinned?"取消釘選":"釘選"}</button>
         <button data-act="del">刪除</button>
       </div>
@@ -273,7 +370,6 @@ function render(){
 /* ---------- 資料存取（本機 / 雲端） ---------- */
 function saveLocal(){
   if(LS.set("cb_items", items)) return;
-  // 圖片太多，本機放不下：只留文字當備份
   LS.set("cb_items", items.map(i=>({...i,img:null})));
   hint("圖片太多，本機存不下。建議開啟雲端同步，圖片才不會遺失");
 }
@@ -287,9 +383,18 @@ async function cloudDel(id){
   const {doc,deleteDoc}=cloud.fs;
   await deleteDoc(doc(cloud.db,"users",cloud.user.uid,"clips",id));
 }
+async function pushSettings(){
+  if(!cloud?.user) return;
+  try{ await cloudSet({id:SETTINGS_ID,isSettings:true,cats:customCats,rules,ts:settingsTs}) }catch(e){}
+}
+function saveSettings(){
+  LS.set("cb_cats",customCats); LS.set("cb_rules",rules);
+  settingsTs=Date.now(); LS.set("cb_settings_ts",settingsTs);
+  pushSettings();
+}
 async function addItem(text,img){
   const it={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-    text, img:img||null, cats:classify(text,!!img), pinned:false, ts:Date.now()};
+    text, img:img||null, note:"", cats:classify(text,!!img), pinned:false, ts:Date.now()};
   items.unshift(it); saveLocal(); render();
   try{ await cloudSet(it) }catch(e){ hint("雲端存失敗，已先存在本機") }
   return it;
@@ -353,7 +458,14 @@ $("list").addEventListener("click",async e=>{
   else if(act==="rmtag"){
     let c=it.cats.filter(x=>x!==t.dataset.c); if(!c.length) c=["其他"];
     updateItem(id,{cats:c});
-  }else if(act==="del"){ if(confirm("確定刪除這筆？")) removeItem(id) }
+  }else if(act==="note"){
+    editingNote=id; noteDraft=it.note||""; render();
+    const ta=document.querySelector(".noteedit textarea"); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length) }
+  }else if(act==="notesave"){
+    const v=box.querySelector(".noteedit textarea").value.trim();
+    editingNote=null; noteDraft=""; updateItem(id,{note:v});
+  }else if(act==="notecancel"){ editingNote=null; noteDraft=""; render() }
+  else if(act==="del"){ if(confirm("確定刪除這筆？")) removeItem(id) }
 });
 $("list").addEventListener("change",e=>{
   if(e.target.dataset.act==="addtag" && e.target.value){
@@ -363,6 +475,9 @@ $("list").addEventListener("change",e=>{
   }
 });
 $("q").oninput=render;
+$("rangeBtn").onclick=()=>{ const r=$("rangeRow"); r.style.display = r.style.display==="flex" ? "none":"flex" };
+$("dFrom").onchange=render; $("dTo").onchange=render;
+$("rangeClear").onclick=()=>{ $("dFrom").value=""; $("dTo").value=""; render() };
 
 /* ---------- 語音輸入 ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -385,18 +500,63 @@ $("micBtn").onclick=()=>{
   $("micBtn").textContent="⏹ 停止"; $("micBtn").classList.add("rec"); hint("請說話…（預設中文，說西文會不準）");
 };
 
+/* ---------- 自訂分類 ---------- */
+let editingCat=null;
+function openCatDlg(name){
+  editingCat=name||null;
+  $("catTitle").textContent=name?"編輯分類":"新增分類";
+  $("catName").value=name||"";
+  $("catKw").value=name?rules.filter(r=>r.cat===name).map(r=>r.kw).join("、"):"";
+  $("catDel").style.display=name?"":"none";
+  $("catMsg").textContent=""; $("catDlg").showModal();
+}
+$("catEditBtn").onclick=()=>openCatDlg(filter);
+$("catSave").onclick=()=>{
+  const n=$("catName").value.trim();
+  const bad=m=>{ $("catMsg").textContent=m };
+  if(!n) return bad("請輸入分類名稱");
+  if(n.length>8) return bad("名稱最多 8 個字");
+  if(n==="全部"||n.includes("釘選")) return bad("這個名稱不能用");
+  if(n!==editingCat && allCats().includes(n)) return bad("已經有這個分類了");
+  const kws=$("catKw").value.split(/[,，、\s]+/).map(s=>s.trim()).filter(Boolean);
+  if(editingCat){
+    if(n!==editingCat){
+      const old=editingCat;
+      customCats=customCats.map(c=>c===old?n:c);
+      rules.forEach(r=>{ if(r.cat===old) r.cat=n });
+      items.forEach(i=>{ if(i.cats.includes(old)){ i.cats=i.cats.map(c=>c===old?n:c); cloudSet(i).catch(()=>{}) } });
+      if(filter===old) filter=n;
+    }
+    rules=rules.filter(r=>r.cat!==n);
+  }else customCats.push(n);
+  kws.forEach(kw=>rules.push({kw,cat:n}));
+  saveSettings(); saveLocal(); render(); $("catDlg").close();
+};
+$("catDel").onclick=()=>{
+  const n=editingCat; if(!n) return;
+  if(!confirm("刪除分類「"+n+"」？貼過的東西不會被刪，只是少了這個標籤。")) return;
+  customCats=customCats.filter(c=>c!==n);
+  rules=rules.filter(r=>r.cat!==n);
+  items.forEach(i=>{
+    if(i.cats.includes(n)){ i.cats=i.cats.filter(c=>c!==n); if(!i.cats.length) i.cats=["其他"]; cloudSet(i).catch(()=>{}) }
+  });
+  if(filter===n) filter="全部";
+  saveSettings(); saveLocal(); render(); $("catDlg").close();
+};
+
 /* ---------- 分類規則視窗 ---------- */
-$("kwCat").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
+function fillKwCat(){ $("kwCat").innerHTML=allCats().map(c=>`<option>${esc(c)}</option>`).join("") }
 function renderRules(){
+  fillKwCat();
   $("rules").innerHTML = rules.length ? rules.map((r,i)=>
-    `<div class="rule"><span>包含「${esc(r.kw)}」→ ${r.cat}</span><button data-i="${i}">移除</button></div>`).join("")
+    `<div class="rule"><span>包含「${esc(r.kw)}」→ ${esc(r.cat)}</span><button data-i="${i}">移除</button></div>`).join("")
     : '<div class="hint">還沒有自訂規則</div>';
-  $("rules").querySelectorAll("button").forEach(b=>b.onclick=()=>{rules.splice(+b.dataset.i,1);LS.set("cb_rules",rules);renderRules()});
+  $("rules").querySelectorAll("button").forEach(b=>b.onclick=()=>{rules.splice(+b.dataset.i,1);saveSettings();renderRules()});
 }
 $("ruleBtn").onclick=()=>{renderRules();$("ruleDlg").showModal()};
 $("kwAdd").onclick=()=>{
   const kw=$("kw").value.trim(); if(!kw) return;
-  rules.push({kw,cat:$("kwCat").value}); LS.set("cb_rules",rules); $("kw").value=""; renderRules();
+  rules.push({kw,cat:$("kwCat").value}); saveSettings(); $("kw").value=""; renderRules();
 };
 
 /* ---------- Firebase 同步 ---------- */
@@ -405,6 +565,11 @@ function setSyncLabel(){
   $("acct").textContent = cloud?.user ? "目前登入："+(cloud.user.email||"（無 email）") : "目前沒有登入";
   $("loginBtn").style.display = cloud?.user ? "none" : "";
   $("logoutBtn").style.display = cloud?.user ? "" : "none";
+}
+function applyCloudSettings(d){
+  customCats=Array.isArray(d.cats)?d.cats:[]; rules=Array.isArray(d.rules)?d.rules:[];
+  settingsTs=d.ts||0;
+  LS.set("cb_cats",customCats); LS.set("cb_rules",rules); LS.set("cb_settings_ts",settingsTs);
 }
 async function initCloud(){
   const cfg=DEFAULT_CFG;
@@ -420,18 +585,23 @@ async function initCloud(){
       cloud.user=u; if(cloud.unsub){cloud.unsub();cloud.unsub=null}
       setSyncLabel();
       if(!u) return;
-      // 先把本機的資料補上雲端，再開始同步
       for(const it of items){ try{ await cloudSet(it) }catch(e){} }
       const {collection,onSnapshot}=fs_;
       cloud.unsub=onSnapshot(collection(db,"users",u.uid,"clips"),snap=>{
-        items=snap.docs.map(d=>norm(d.data())); saveLocal(); render();
+        const docs=snap.docs.map(d=>d.data());
+        const st=docs.find(d=>d.id===SETTINGS_ID);
+        if(st){
+          if((st.ts||0)>settingsTs) applyCloudSettings(st);
+          else if(settingsTs>(st.ts||0)) pushSettings();
+        }else if(customCats.length||rules.length){ if(!settingsTs) settingsTs=Date.now(); pushSettings() }
+        items=docs.filter(d=>d.id!==SETTINGS_ID).map(norm); saveLocal(); render();
       },err=>{ $("syncMsg").textContent="讀取雲端失敗（可能是 Firestore 規則沒開）："+err.code });
     });
   }catch(e){ $("syncMsg").textContent="Firebase 載入失敗："+e.message }
 }
 $("syncBtn").onclick=()=>{ setSyncLabel(); $("syncDlg").showModal() };
 $("loginBtn").onclick=async()=>{
-  if(!cloud){ $("syncMsg").textContent="請先儲存設定並重新整理"; return }
+  if(!cloud){ $("syncMsg").textContent="網路還沒連上，請稍後再試"; return }
   try{
     const p=new cloud.au.GoogleAuthProvider();
     await cloud.au.signInWithPopup(cloud.auth,p); $("syncMsg").textContent="登入成功"; $("syncDlg").close();
@@ -439,7 +609,7 @@ $("loginBtn").onclick=async()=>{
 };
 $("logoutBtn").onclick=async()=>{ if(cloud) await cloud.au.signOut(cloud.auth); setSyncLabel() };
 
-render(); initCloud();
+setSyncLabel(); render(); initCloud();
 </script>
 </body>
 </html>
