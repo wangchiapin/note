@@ -116,11 +116,6 @@ a.btn{font:inherit;font-size:15px;color:var(--ink);background:var(--card);border
     <button onclick="syncDlg.close()">關閉</button>
   </div>
   <div class="hint" id="syncMsg"></div>
-  <details style="margin-top:10px">
-    <summary style="font-size:12px;color:var(--sub);cursor:pointer">進階設定（一般不用動）</summary>
-    <textarea id="cfgTxt" style="margin-top:6px"></textarea>
-    <div class="row"><button id="cfgSave">儲存設定</button><button id="cfgReset">還原預設</button></div>
-  </details>
 </dialog>
 
 <dialog id="ruleDlg">
@@ -405,11 +400,6 @@ $("kwAdd").onclick=()=>{
 };
 
 /* ---------- Firebase 同步 ---------- */
-function parseCfg(s){
-  const o={}; const re=/(\w+)\s*:\s*["']([^"']+)["']/g; let m;
-  while((m=re.exec(s))) o[m[1]]=m[2];
-  return o.apiKey&&o.projectId ? o : null;
-}
 function setSyncLabel(){
   $("syncBtn").textContent = cloud?.user ? "☁️ 已同步" : "未登入（點我登入）";
   $("acct").textContent = cloud?.user ? "目前登入："+(cloud.user.email||"（無 email）") : "目前沒有登入";
@@ -417,7 +407,7 @@ function setSyncLabel(){
   $("logoutBtn").style.display = cloud?.user ? "" : "none";
 }
 async function initCloud(){
-  const cfg=LS.get("cb_cfg",null)||DEFAULT_CFG;
+  const cfg=DEFAULT_CFG;
   try{
     const V="10.12.2", B=`https://www.gstatic.com/firebasejs/${V}/`;
     const app_=await import(B+"firebase-app.js");
@@ -439,16 +429,7 @@ async function initCloud(){
     });
   }catch(e){ $("syncMsg").textContent="Firebase 載入失敗："+e.message }
 }
-$("syncBtn").onclick=()=>{ const c=LS.get("cb_cfg",null)||DEFAULT_CFG; $("cfgTxt").value=JSON.stringify(c,null,1); setSyncLabel(); $("syncDlg").showModal() };
-$("cfgSave").onclick=()=>{
-  const c=parseCfg($("cfgTxt").value);
-  if(!c){ $("syncMsg").textContent="看不出設定內容，請整段 firebaseConfig 貼上"; return }
-  LS.set("cb_cfg",c); $("syncMsg").textContent="已儲存，重新整理頁面後生效"; setSyncLabel();
-};
-$("cfgReset").onclick=()=>{
-  try{ localStorage.removeItem("cb_cfg") }catch(e){}
-  $("cfgTxt").value=JSON.stringify(DEFAULT_CFG,null,1); $("syncMsg").textContent="已還原預設，重新整理頁面後生效";
-};
+$("syncBtn").onclick=()=>{ setSyncLabel(); $("syncDlg").showModal() };
 $("loginBtn").onclick=async()=>{
   if(!cloud){ $("syncMsg").textContent="請先儲存設定並重新整理"; return }
   try{
