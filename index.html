@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>隨手貼</title>
+<style>
+:root{
+  --bg:#f5f3ee; --card:#fbfaf7; --ink:#3a3835; --sub:#8a857d; --line:#e2ded5;
+  --accent:#6b655c; --danger:#a1584f;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  line-height:1.6;padding:env(safe-area-inset-top) 0 40px}
+.wrap{max-width:720px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;justify-content:space-between;margin:4px 0 14px}
+h1{font-size:20px;font-weight:600;margin:0;letter-spacing:.05em}
+.sync{font-size:12px;color:var(--sub);cursor:pointer;border:1px solid var(--line);
+  padding:4px 10px;border-radius:99px;background:var(--card)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+textarea{width:100%;min-height:96px;border:none;background:transparent;resize:vertical;
+  font:inherit;color:inherit;outline:none;font-size:16px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+button,select{font:inherit;font-size:15px;color:var(--ink);background:var(--card);
+  border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer}
+button:active{background:var(--line)}
+button.main{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.rec{background:var(--danger);color:#fff;border-color:var(--danger)}
+.grow{flex:1}
+.hint{font-size:12px;color:var(--sub);margin-top:6px;min-height:18px}
+#prev{display:none;position:relative;margin-bottom:8px}
+#prev img{max-width:100%;max-height:220px;border-radius:8px;border:1px solid var(--line);display:block}
+#prev button{position:absolute;top:6px;left:6px;padding:2px 9px;border-radius:99px;font-size:13px;background:rgba(255,255,255,.9)}
+.chips{display:flex;gap:6px;overflow-x:auto;margin:16px 0 8px;padding-bottom:4px}
+.chip{white-space:nowrap;font-size:13px;padding:5px 12px;border-radius:99px;
+  border:1px solid var(--line);background:var(--card);cursor:pointer;color:var(--sub)}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+input.search{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;
+  background:var(--card);font:inherit;font-size:15px;outline:none;margin-bottom:8px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:12px;margin-bottom:10px}
+.item.pin{border-color:var(--accent)}
+.thumb{max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--line);
+  display:block;margin-bottom:8px;cursor:zoom-in}
+.txt{white-space:pre-wrap;word-break:break-word;font-size:15px}
+.txt a{color:var(--accent)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.tag{font-size:12px;padding:2px 4px 2px 10px;border-radius:99px;background:var(--bg);
+  border:1px solid var(--line);color:var(--ink)}
+.tag b{font-weight:400;color:var(--sub);cursor:pointer;padding:0 6px}
+.tags select{font-size:12px;padding:2px 8px;border-radius:99px;color:var(--sub)}
+.meta{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--sub);flex-wrap:wrap}
+.meta .sp{flex:1}
+.meta button{font-size:12px;padding:4px 10px;border-radius:99px}
+.empty{text-align:center;color:var(--sub);padding:40px 0;font-size:14px}
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);
+  max-width:520px;width:calc(100% - 32px);padding:16px}
+dialog::backdrop{background:rgba(0,0,0,.3)}
+dialog h2{font-size:16px;margin:0 0 8px}
+dialog textarea{border:1px solid var(--line);border-radius:8px;padding:8px;min-height:90px;font-size:13px}
+dialog input{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;font-size:14px;background:var(--bg)}
+#imgDlg{max-width:900px}
+#imgDlg img{max-width:100%;border-radius:8px;display:block;margin:0 auto 8px}
+.rule{display:flex;gap:6px;margin:6px 0;font-size:13px;align-items:center}
+.rule span{flex:1}
+a.btn{font:inherit;font-size:15px;color:var(--ink);background:var(--card);border:1px solid var(--line);
+  border-radius:10px;padding:9px 14px;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>隨手貼</h1>
+    <div class="sync" id="syncBtn">僅存本機</div>
+  </header>
+
+  <div class="box">
+    <div id="prev"><img id="prevImg" alt=""><button id="prevX">✕</button></div>
+    <textarea id="inp" placeholder="把複製的東西貼在這裡，或按麥克風用說的"></textarea>
+    <div class="row">
+      <button id="pasteBtn">📋 貼上</button>
+      <button id="imgBtn">📷 圖片</button>
+      <button id="micBtn">🎤 語音</button>
+      <span class="grow"></span>
+      <button class="main" id="saveBtn">存起來</button>
+    </div>
+    <input type="file" id="file" accept="image/*" hidden>
+    <div class="hint" id="hint"></div>
+  </div>
+
+  <div class="chips" id="chips"></div>
+  <input class="search" id="q" placeholder="搜尋文字、圖片說明或標籤…">
+  <div id="list"></div>
+
+  <div style="text-align:center;margin-top:16px">
+    <button id="ruleBtn" style="font-size:13px">分類規則</button>
+  </div>
+</div>
+
+<dialog id="imgDlg">
+  <img id="bigImg" alt="">
+  <div class="txt" id="bigCap" style="font-size:14px;margin-bottom:8px"></div>
+  <div class="row"><a class="btn" id="dlLink" download="clip.jpg">下載圖片</a><span class="grow"></span><button onclick="imgDlg.close()">關閉</button></div>
+</dialog>
+
+<dialog id="syncDlg">
+  <h2>雲端同步（Firebase）</h2>
+  <p style="font-size:13px;color:var(--sub);margin:0 0 8px">
+    用 Google 登入後，手機和電腦就會同步。不登入也能用，只是只存在這台裝置。下面是目前使用的 Firebase 設定，一般不用動。</p>
+  <textarea id="cfgTxt" placeholder='const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." };'></textarea>
+  <div class="row">
+    <button id="cfgSave">儲存設定</button>
+    <button class="main" id="loginBtn">Google 登入</button>
+    <button id="logoutBtn">登出</button>
+    <span class="grow"></span>
+    <button onclick="syncDlg.close()">關閉</button>
+  </div>
+  <div class="hint" id="syncMsg"></div>
+</dialog>
+
+<dialog id="ruleDlg">
+  <h2>分類規則</h2>
+  <p style="font-size:13px;color:var(--sub);margin:0 0 8px">
+    內建規則會自動判斷網址、電話、金額、待辦等，符合幾個就標幾個（最多 3 個）。你也可以加自己的關鍵字，只要內容包含它，就加上你指定的標籤。</p>
+  <div class="row" style="margin:0 0 6px">
+    <input id="kw" placeholder="關鍵字，例如：學生" style="flex:1">
+    <select id="kwCat"></select>
+    <button id="kwAdd">加入</button>
+  </div>
+  <div id="rules"></div>
+  <div class="row"><span class="grow"></span><button onclick="ruleDlg.close()">關閉</button></div>
+</dialog>
+
+<script type="module">
+/* ---------- 基本設定 ---------- */
+const CATS = ["圖片","連結","聯絡方式","記帳","待辦提醒","教學","程式碼","其他"];
+const MAX_AUTO = 3, MAX_TAGS = 5;
+// Firebase 專案：perrito-busca-el-tesoro（網頁金鑰本來就是公開的，資料安全靠 Firestore 規則）
+const DEFAULT_CFG = {
+  apiKey: "AIzaSyAa58xLAL4dLphvdPEvWYAUfHrjM1kcnoo",
+  authDomain: "perrito-busca-el-tesoro.firebaseapp.com",
+  projectId: "perrito-busca-el-tesoro",
+  storageBucket: "perrito-busca-el-tesoro.firebasestorage.app",
+  messagingSenderId: "352935350375",
+  appId: "1:352935350375:web:c50678d1e8bce967ae44c2"
+};
+const $ = id => document.getElementById(id);
+const LS = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d }catch(e){ return d } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); return true }catch(e){ return false } }
+};
+function norm(it){
+  if(!it.cats){ it.cats=[it.cat||"其他"]; delete it.cat }
+  if(it.img===undefined) it.img=null;
+  if(it.text===undefined) it.text="";
+  return it;
+}
+let items = LS.get("cb_items", []).map(norm);
+let rules = LS.get("cb_rules", []);      // [{kw, cat}]
+let filter = "全部";
+let pendingImg = null;                    // 準備要存的圖片（壓縮後 dataURL）
+let cloud = null;                         // {db, auth, fs, user, unsub}
+
+/* ---------- 自動分類（回傳多個標籤） ---------- */
+function classify(text, hasImg){
+  const out=[]; const add=c=>{ if(!out.includes(c)) out.push(c) };
+  const t=text.trim();
+  for(const r of rules){ if(r.kw && t.toLowerCase().includes(r.kw.toLowerCase())) add(r.cat) }
+  if(hasImg) add("圖片");
+  if(t){
+    if(/https?:\/\/|www\.|\b[\w-]+\.(com|tw|org|net|io|me)\b/i.test(t)) add("連結");
+    if(/[\w.+-]+@[\w-]+\.[\w.]+/.test(t) || /(\+?886[-\s]?)?0?9\d{2}[-\s]?\d{3}[-\s]?\d{3}/.test(t) || /\b0\d{1,2}-?\d{6,8}\b/.test(t)) add("聯絡方式");
+    if(/(function|const |let |var |=>|<\/?\w+>|import |def |console\.|SELECT |{[\s\S]*}\s*$)/.test(t) && /[;{}()=]/.test(t)) add("程式碼");
+    if(/(元|塊|NT\$?|\$|花了|買了|付了|收入|匯款|轉帳|發票|帳單|薪水|學費)/.test(t) && /\d/.test(t)) add("記帳");
+    if(/(明天|後天|下週|下禮拜|禮拜[一二三四五六日天]|週[一二三四五六日]|記得|提醒|待辦|要做|別忘|deadline|截止|\d{1,2}[\/月]\d{1,2})/i.test(t)) add("待辦提醒");
+    if(/(學生|上課|文法|拼音|注音|聲調|課堂|作業|教材|造句|華語|中文|ser |estar |gramática|¿)/i.test(t)) add("教學");
+  }
+  if(!out.length) add("其他");
+  return out.slice(0,MAX_AUTO);
+}
+
+/* ---------- 圖片壓縮 ---------- */
+function compressImage(file){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(file);
+    const im=new Image();
+    im.onload=()=>{
+      try{
+        let scale=Math.min(1,1280/Math.max(im.naturalWidth,im.naturalHeight));
+        let out="";
+        for(let round=0; round<6; round++){
+          const w=Math.max(1,Math.round(im.naturalWidth*scale)), h=Math.max(1,Math.round(im.naturalHeight*scale));
+          const c=document.createElement("canvas"); c.width=w; c.height=h;
+          const g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,w,h); g.drawImage(im,0,0,w,h);
+          let q=0.8; out=c.toDataURL("image/jpeg",q);
+          while(out.length>700000 && q>0.45){ q-=0.1; out=c.toDataURL("image/jpeg",q) }
+          if(out.length<=700000) break;
+          scale*=0.8;
+        }
+        URL.revokeObjectURL(url);
+        out.length<=900000 ? res(out) : rej(new Error("這張圖太大，壓不下來"));
+      }catch(e){ URL.revokeObjectURL(url); rej(e) }
+    };
+    im.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error("讀不了這張圖（格式不支援）")) };
+    im.src=url;
+  });
+}
+async function attachFile(file){
+  try{
+    hint("圖片處理中…");
+    pendingImg = await compressImage(file);
+    $("prevImg").src=pendingImg; $("prev").style.display="block";
+    $("inp").placeholder="替這張圖寫幾個字說明（可以用語音），也可以不寫";
+    hint("圖片已加入。文字框現在是圖片說明，按「存起來」");
+  }catch(e){ hint(e.message) }
+}
+function clearImg(){
+  pendingImg=null; $("prev").style.display="none"; $("prevImg").removeAttribute("src");
+  $("inp").placeholder="把複製的東西貼在這裡，或按麥克風用說的";
+}
+$("prevX").onclick=clearImg;
+$("imgBtn").onclick=()=>$("file").click();
+$("file").onchange=e=>{ const f=e.target.files[0]; if(f) attachFile(f); e.target.value="" };
+document.addEventListener("paste",e=>{
+  const f=[...(e.clipboardData?.files||[])].find(x=>x.type.startsWith("image/"));
+  if(f){ e.preventDefault(); attachFile(f) }
+});
+
+/* ---------- 畫面 ---------- */
+function esc(s){ return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])) }
+function linkify(s){
+  return esc(s).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
+}
+function fmt(ts){
+  const d=new Date(ts), p=n=>String(n).padStart(2,"0");
+  return `${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function renderChips(){
+  const names=["全部","📌 釘選",...CATS];
+  $("chips").innerHTML = names.map(n=>{
+    const count = n==="全部"?items.length : n==="📌 釘選"?items.filter(i=>i.pinned).length : items.filter(i=>i.cats.includes(n)).length;
+    return `<div class="chip ${filter===n?"on":""}" data-n="${n}">${n} ${count}</div>`;
+  }).join("");
+  $("chips").querySelectorAll(".chip").forEach(c=>c.onclick=()=>{filter=c.dataset.n;render()});
+}
+function render(){
+  renderChips();
+  const q=$("q").value.trim().toLowerCase();
+  let list=[...items].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0) || b.ts-a.ts);
+  if(filter==="📌 釘選") list=list.filter(i=>i.pinned);
+  else if(filter!=="全部") list=list.filter(i=>i.cats.includes(filter));
+  if(q) list=list.filter(i=>(i.text+" "+i.cats.join(" ")).toLowerCase().includes(q));
+  if(!list.length){ $("list").innerHTML='<div class="empty">還沒有東西</div>'; return; }
+  $("list").innerHTML = list.map(i=>{
+    const left=CATS.filter(c=>!i.cats.includes(c));
+    return `
+    <div class="item ${i.pinned?"pin":""}" data-id="${i.id}">
+      ${i.img?`<img class="thumb" src="${i.img}" data-act="view" alt="">`:""}
+      ${i.text?`<div class="txt">${linkify(i.text)}</div>`:""}
+      <div class="tags">
+        ${i.cats.map(c=>`<span class="tag">${c}<b data-act="rmtag" data-c="${c}">×</b></span>`).join("")}
+        ${left.length&&i.cats.length<MAX_TAGS?`<select data-act="addtag"><option value="">＋標籤</option>${left.map(c=>`<option>${c}</option>`).join("")}</select>`:""}
+      </div>
+      <div class="meta">
+        <span>${fmt(i.ts)}</span><span class="sp"></span>
+        ${i.text?`<button data-act="copy">複製</button>`:""}
+        <button data-act="pin">${i.pinned?"取消釘選":"釘選"}</button>
+        <button data-act="del">刪除</button>
+      </div>
+    </div>`}).join("");
+}
+
+/* ---------- 資料存取（本機 / 雲端） ---------- */
+function saveLocal(){
+  if(LS.set("cb_items", items)) return;
+  // 圖片太多，本機放不下：只留文字當備份
+  LS.set("cb_items", items.map(i=>({...i,img:null})));
+  hint("圖片太多，本機存不下。建議開啟雲端同步，圖片才不會遺失");
+}
+async function cloudSet(it){
+  if(!cloud?.user) return;
+  const {doc,setDoc}=cloud.fs;
+  await setDoc(doc(cloud.db,"users",cloud.user.uid,"clips",it.id), it);
+}
+async function cloudDel(id){
+  if(!cloud?.user) return;
+  const {doc,deleteDoc}=cloud.fs;
+  await deleteDoc(doc(cloud.db,"users",cloud.user.uid,"clips",id));
+}
+async function addItem(text,img){
+  const it={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    text, img:img||null, cats:classify(text,!!img), pinned:false, ts:Date.now()};
+  items.unshift(it); saveLocal(); render();
+  try{ await cloudSet(it) }catch(e){ hint("雲端存失敗，已先存在本機") }
+  return it;
+}
+async function updateItem(id,patch){
+  const it=items.find(i=>i.id===id); if(!it) return;
+  Object.assign(it,patch); saveLocal(); render();
+  try{ await cloudSet(it) }catch(e){}
+}
+async function removeItem(id){
+  items=items.filter(i=>i.id!==id); saveLocal(); render();
+  try{ await cloudDel(id) }catch(e){}
+}
+
+/* ---------- 事件 ---------- */
+let hintTimer;
+function hint(s){ $("hint").textContent=s; clearTimeout(hintTimer); hintTimer=setTimeout(()=>$("hint").textContent="",4500) }
+
+$("saveBtn").onclick=async()=>{
+  const t=$("inp").value.trim();
+  if(!t && !pendingImg){ hint("先貼上、拍張圖或說點什麼"); return }
+  const it=await addItem(t,pendingImg); $("inp").value=""; clearImg();
+  hint("已存，標籤：「"+it.cats.join("、")+"」");
+};
+$("inp").addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="Enter") $("saveBtn").click() });
+
+$("pasteBtn").onclick=async()=>{
+  try{
+    const cis=await navigator.clipboard.read();
+    for(const ci of cis){
+      const it=ci.types.find(t=>t.startsWith("image/"));
+      if(it){ await attachFile(await ci.getType(it)); return }
+    }
+    for(const ci of cis){
+      if(ci.types.includes("text/plain")){
+        const t=await (await ci.getType("text/plain")).text();
+        if(t){ $("inp").value += ($("inp").value?"\n":"")+t; hint("已貼上，按「存起來」"); return }
+      }
+    }
+    hint("剪貼簿是空的");
+  }catch(e){
+    try{
+      const t=await navigator.clipboard.readText();
+      if(!t){ hint("剪貼簿是空的"); return }
+      $("inp").value += ($("inp").value?"\n":"")+t; hint("已貼上，按「存起來」");
+    }catch(e2){ hint("瀏覽器不讓讀剪貼簿，請直接在框裡長按貼上"); $("inp").focus() }
+  }
+};
+
+$("list").addEventListener("click",async e=>{
+  const t=e.target.closest("[data-act]"); if(!t) return;
+  const act=t.dataset.act;
+  if(act==="addtag") return;
+  const box=t.closest(".item"), id=box.dataset.id, it=items.find(i=>i.id===id); if(!it) return;
+  if(act==="view"){
+    $("bigImg").src=it.img; $("bigCap").textContent=it.text||"";
+    $("dlLink").href=it.img; $("dlLink").download="clip-"+it.id+".jpg"; $("imgDlg").showModal();
+  }else if(act==="copy"){
+    try{ await navigator.clipboard.writeText(it.text); t.textContent="已複製"; setTimeout(()=>t.textContent="複製",1200) }catch(err){}
+  }else if(act==="pin") updateItem(id,{pinned:!it.pinned});
+  else if(act==="rmtag"){
+    let c=it.cats.filter(x=>x!==t.dataset.c); if(!c.length) c=["其他"];
+    updateItem(id,{cats:c});
+  }else if(act==="del"){ if(confirm("確定刪除這筆？")) removeItem(id) }
+});
+$("list").addEventListener("change",e=>{
+  if(e.target.dataset.act==="addtag" && e.target.value){
+    const id=e.target.closest(".item").dataset.id, it=items.find(i=>i.id===id); if(!it) return;
+    const c=it.cats.filter(x=>x!=="其他"); c.push(e.target.value);
+    updateItem(id,{cats:c});
+  }
+});
+$("q").oninput=render;
+
+/* ---------- 語音輸入 ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec=null, listening=false, baseText="";
+$("micBtn").onclick=()=>{
+  if(!SR){ hint("這個瀏覽器不支援語音，請用 Chrome、Edge 或 Safari；手機也可用鍵盤上的麥克風"); return }
+  if(listening){ rec.stop(); return }
+  rec=new SR(); rec.lang="zh-TW"; rec.continuous=true; rec.interimResults=true;
+  baseText=$("inp").value; if(baseText && !baseText.endsWith("\n")) baseText+="\n";
+  rec.onresult=e=>{
+    let fin="", tmp="";
+    for(let i=0;i<e.results.length;i++){
+      (e.results[i].isFinal?fin+=e.results[i][0].transcript:tmp+=e.results[i][0].transcript);
+    }
+    $("inp").value=baseText+fin+tmp;
+  };
+  rec.onerror=e=>{ hint(e.error==="not-allowed"?"請允許使用麥克風":"語音發生問題："+e.error) };
+  rec.onend=()=>{ listening=false; $("micBtn").textContent="🎤 語音"; $("micBtn").classList.remove("rec"); hint("語音結束，可再修改後存起來") };
+  rec.start(); listening=true;
+  $("micBtn").textContent="⏹ 停止"; $("micBtn").classList.add("rec"); hint("請說話…（預設中文，說西文會不準）");
+};
+
+/* ---------- 分類規則視窗 ---------- */
+$("kwCat").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
+function renderRules(){
+  $("rules").innerHTML = rules.length ? rules.map((r,i)=>
+    `<div class="rule"><span>包含「${esc(r.kw)}」→ ${r.cat}</span><button data-i="${i}">移除</button></div>`).join("")
+    : '<div class="hint">還沒有自訂規則</div>';
+  $("rules").querySelectorAll("button").forEach(b=>b.onclick=()=>{rules.splice(+b.dataset.i,1);LS.set("cb_rules",rules);renderRules()});
+}
+$("ruleBtn").onclick=()=>{renderRules();$("ruleDlg").showModal()};
+$("kwAdd").onclick=()=>{
+  const kw=$("kw").value.trim(); if(!kw) return;
+  rules.push({kw,cat:$("kwCat").value}); LS.set("cb_rules",rules); $("kw").value=""; renderRules();
+};
+
+/* ---------- Firebase 同步 ---------- */
+function parseCfg(s){
+  const o={}; const re=/(\w+)\s*:\s*["']([^"']+)["']/g; let m;
+  while((m=re.exec(s))) o[m[1]]=m[2];
+  return o.apiKey&&o.projectId ? o : null;
+}
+function setSyncLabel(){
+  $("syncBtn").textContent = cloud?.user ? "☁️ 已同步" : "未登入（點我登入）";
+}
+async function initCloud(){
+  const cfg=LS.get("cb_cfg",null)||DEFAULT_CFG;
+  try{
+    const V="10.12.2", B=`https://www.gstatic.com/firebasejs/${V}/`;
+    const app_=await import(B+"firebase-app.js");
+    const auth_=await import(B+"firebase-auth.js");
+    const fs_=await import(B+"firebase-firestore.js");
+    const app=app_.initializeApp(cfg,"clipbox");
+    const auth=auth_.getAuth(app), db=fs_.getFirestore(app);
+    cloud={auth,db,fs:fs_,au:auth_,user:null,unsub:null};
+    auth_.onAuthStateChanged(auth,async u=>{
+      cloud.user=u; if(cloud.unsub){cloud.unsub();cloud.unsub=null}
+      setSyncLabel();
+      if(!u) return;
+      // 先把本機的資料補上雲端，再開始同步
+      for(const it of items){ try{ await cloudSet(it) }catch(e){} }
+      const {collection,onSnapshot}=fs_;
+      cloud.unsub=onSnapshot(collection(db,"users",u.uid,"clips"),snap=>{
+        items=snap.docs.map(d=>norm(d.data())); saveLocal(); render();
+      },err=>{ $("syncMsg").textContent="讀取雲端失敗（可能是 Firestore 規則沒開）："+err.code });
+    });
+  }catch(e){ $("syncMsg").textContent="Firebase 載入失敗："+e.message }
+}
+$("syncBtn").onclick=()=>{ const c=LS.get("cb_cfg",null)||DEFAULT_CFG; $("cfgTxt").value=JSON.stringify(c,null,1); $("syncDlg").showModal() };
+$("cfgSave").onclick=()=>{
+  const c=parseCfg($("cfgTxt").value);
+  if(!c){ $("syncMsg").textContent="看不出設定內容，請整段 firebaseConfig 貼上"; return }
+  LS.set("cb_cfg",c); $("syncMsg").textContent="已儲存，重新整理頁面後生效"; setSyncLabel();
+};
+$("loginBtn").onclick=async()=>{
+  if(!cloud){ $("syncMsg").textContent="請先儲存設定並重新整理"; return }
+  try{
+    const p=new cloud.au.GoogleAuthProvider();
+    await cloud.au.signInWithPopup(cloud.auth,p); $("syncMsg").textContent="登入成功"; $("syncDlg").close();
+  }catch(e){ $("syncMsg").textContent="登入失敗："+e.code+"（網站網域要加進 Firebase 的授權網域）" }
+};
+$("logoutBtn").onclick=async()=>{ if(cloud) await cloud.au.signOut(cloud.auth); setSyncLabel() };
+
+render(); initCloud();
+</script>
+</body>
+</html>
