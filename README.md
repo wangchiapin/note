@@ -19,7 +19,7 @@
 
 ## 同步與資料
 
-- 用 Google 登入後，資料存在 Firebase Firestore（專案 `perrito-busca-el-tesoro`，路徑 `users/{uid}/clips`；分類規則等設定存在同一處的 `__settings__`），手機和電腦即時同步。
+- 用 Google 登入後，資料存在 Firebase Firestore（專案 `gimnacio-de-chino`，路徑 `users/{uid}/clips`；分類規則等設定存在同一處的 `__settings__`），手機和電腦即時同步。
 - 不登入也能用，只是只存在這台裝置的瀏覽器（localStorage）。
 - Firebase 設定已固定寫在程式裡，沒有「進階設定」。登入失敗時，通常是網站網域沒有加進 Firebase 的授權網域。
 
