@@ -60,10 +60,12 @@ input.search{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--line);bo
 .item.pin{border-color:var(--accent)}
 .thumb{max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--line);
   display:block;margin-bottom:8px;cursor:zoom-in}
-.txt{white-space:pre-wrap;word-break:break-word;font-size:15px}
+.txt{white-space:pre-wrap;word-break:break-word;font-size:15px;
+  max-height:150px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .txt a{color:var(--accent)}
 .note{white-space:pre-wrap;word-break:break-word;font-size:13px;color:var(--sub);
-  margin-top:8px;padding:6px 10px;background:var(--bg);border-radius:8px;border-left:3px solid var(--line)}
+  margin-top:8px;padding:6px 10px;background:var(--bg);border-radius:8px;border-left:3px solid var(--line);
+  max-height:110px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .noteedit textarea{border:1px solid var(--line);border-radius:8px;padding:8px;min-height:64px;font-size:14px;background:var(--bg);margin-top:8px}
 .noteedit .row button{font-size:13px;padding:5px 12px}
 .tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
