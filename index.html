@@ -63,6 +63,9 @@ input.search{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--line);bo
 .txt{white-space:pre-wrap;word-break:break-word;font-size:15px;
   max-height:150px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .txt a{color:var(--accent)}
+.grip{height:20px;display:flex;align-items:center;justify-content:center;cursor:ns-resize;
+  touch-action:none;margin-top:2px;-webkit-user-select:none;user-select:none}
+.grip span{width:40px;height:4px;border-radius:2px;background:var(--sub);opacity:.55}
 .note{white-space:pre-wrap;word-break:break-word;font-size:13px;color:var(--sub);
   margin-top:8px;padding:6px 10px;background:var(--bg);border-radius:8px;border-left:3px solid var(--line);
   max-height:110px;overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -358,8 +361,9 @@ function render(){
     const editing = editingNote===i.id;
     return `
     <div class="item ${i.pinned?"pin":""}" data-id="${i.id}">
-      ${i.img?`<img class="thumb" src="${i.img}" data-act="view" alt="">`:""}
-      ${i.text?`<div class="txt">${linkify(i.text)}</div>`:""}
+      ${i.img?`<img class="thumb" src="${i.img}" data-act="view" alt=""${!i.text&&i.h?` style="max-height:${+i.h}px"`:""}>`:""}
+      ${i.text?`<div class="txt"${i.h?` style="max-height:${+i.h}px"`:""}>${linkify(i.text)}</div>`:""}
+      ${(i.text||i.img)?`<div class="grip" title="上下拖曳調整大小，點兩下恢復預設"><span></span></div>`:""}
       ${editing
         ? `<div class="noteedit"><textarea placeholder="寫下備註…">${esc(noteDraft)}</textarea>
              <div class="row"><button class="main" data-act="notesave">存備註</button><button data-act="notecancel">取消</button></div></div>`
@@ -477,6 +481,36 @@ $("list").addEventListener("click",async e=>{
     editingNote=null; noteDraft=""; updateItem(id,{note:v});
   }else if(act==="notecancel"){ editingNote=null; noteDraft=""; render() }
   else if(act==="del"){ if(confirm("確定刪除這筆？")) removeItem(id) }
+});
+/* 拖曳把手：調整每一則的高度（存在 it.h，會跟著雲端同步） */
+let gripDrag=null;
+$("list").addEventListener("pointerdown",e=>{
+  const g=e.target.closest(".grip"); if(!g) return;
+  const box=g.closest(".item"); if(!box) return;
+  const el=box.querySelector(".txt")||box.querySelector(".thumb"); if(!el) return;
+  const isImg=el.classList.contains("thumb");
+  const full=isImg ? Math.ceil(el.naturalHeight*el.clientWidth/(el.naturalWidth||1)) : el.scrollHeight;
+  gripDrag={g,el,id:box.dataset.id,y:e.clientY,start:el.getBoundingClientRect().height,max:Math.max(full,40),h:null};
+  try{ g.setPointerCapture(e.pointerId) }catch(err){}
+  e.preventDefault();
+});
+$("list").addEventListener("pointermove",e=>{
+  if(!gripDrag) return;
+  const d=gripDrag;
+  d.h=Math.round(Math.min(d.max,Math.max(40,d.start+(e.clientY-d.y))));
+  d.el.style.maxHeight=d.h+"px";
+});
+function endGrip(){
+  if(!gripDrag) return;
+  const d=gripDrag; gripDrag=null;
+  if(d.h!==null) updateItem(d.id,{h:d.h});
+}
+$("list").addEventListener("pointerup",endGrip);
+$("list").addEventListener("pointercancel",endGrip);
+$("list").addEventListener("dblclick",e=>{
+  const g=e.target.closest(".grip"); if(!g) return;
+  const id=g.closest(".item").dataset.id, it=items.find(i=>i.id===id);
+  if(it&&it.h) updateItem(id,{h:null});
 });
 $("list").addEventListener("change",e=>{
   if(e.target.dataset.act==="addtag" && e.target.value){
