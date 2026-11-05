@@ -619,7 +619,7 @@ function applyCloudSettings(d){
 async function initCloud(){
   const cfg=DEFAULT_CFG;
   try{
-    const V="10.12.2", B=`https://www.gstatic.com/firebasejs/${V}/`;
+    const V="12.17.1", B=`https://www.gstatic.com/firebasejs/${V}/`;
     const app_=await import(B+"firebase-app.js");
     const auth_=await import(B+"firebase-auth.js");
     const fs_=await import(B+"firebase-firestore.js");
