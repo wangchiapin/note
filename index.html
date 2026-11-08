@@ -57,7 +57,10 @@ input.search{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--line);bo
 .shint{font-size:11px;color:var(--sub);margin:0 0 8px}
 .item{background:var(--card);border:1px solid var(--line);border-radius:12px;
   padding:12px;margin-bottom:10px}
-.item.pin{border-color:var(--accent)}
+.item{position:relative}
+.item.pin{border-color:var(--accent);background:#f0e9d8}
+.pinmark{position:absolute;top:-10px;right:12px;font-size:14px;line-height:1;padding:3px 6px;
+  border-radius:99px;background:#f0e9d8;border:1px solid var(--accent)}
 .thumb{max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--line);
   display:block;margin-bottom:8px;cursor:zoom-in}
 .txt{white-space:pre-wrap;word-break:break-word;font-size:15px;
@@ -361,6 +364,7 @@ function render(){
     const editing = editingNote===i.id;
     return `
     <div class="item ${i.pinned?"pin":""}" data-id="${i.id}">
+      ${i.pinned?`<span class="pinmark">📌</span>`:""}
       ${i.img?`<img class="thumb" src="${i.img}" data-act="view" alt=""${!i.text&&i.h?` style="max-height:${+i.h}px"`:""}>`:""}
       ${i.text?`<div class="txt"${i.h?` style="max-height:${+i.h}px"`:""}>${linkify(i.text)}</div>`:""}
       ${(i.text||i.img)?`<div class="grip" title="上下拖曳調整大小，點兩下恢復預設"><span></span></div>`:""}
