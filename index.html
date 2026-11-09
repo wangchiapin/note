@@ -38,9 +38,15 @@ button.main{background:var(--accent);color:#fff;border-color:var(--accent)}
 button.rec{background:var(--danger);color:#fff;border-color:var(--danger)}
 .grow{flex:1}
 .hint{font-size:12px;color:var(--sub);margin-top:6px;min-height:18px}
-#prev{display:none;position:relative;margin-bottom:8px}
-#prev img{max-width:100%;max-height:220px;border-radius:8px;border:1px solid var(--line);display:block}
-#prev button{position:absolute;top:6px;left:6px;padding:2px 9px;border-radius:99px;font-size:13px;background:rgba(255,255,255,.9)}
+#prev{display:none;margin-bottom:8px}
+.pv{position:relative;display:inline-block;margin:0 6px 6px 0;vertical-align:top}
+.pv img{height:96px;max-width:100%;border-radius:8px;border:1px solid var(--line);display:block}
+.pv button{position:absolute;top:4px;left:4px;padding:2px 9px;border-radius:99px;font-size:13px;background:rgba(255,255,255,.9)}
+.pcount{font-size:12px;color:var(--sub)}
+.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.thumbs.two{grid-template-columns:repeat(2,1fr)}
+.thumbs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;display:block}
+.navrow{display:none;align-items:center;justify-content:center;gap:12px;margin-bottom:8px;font-size:14px;color:var(--sub)}
 .chips{display:flex;gap:6px;overflow-x:auto;margin:16px 0 8px;padding-bottom:4px}
 .chip{white-space:nowrap;font-size:13px;padding:5px 12px;border-radius:99px;
   border:1px solid var(--line);background:var(--card);cursor:pointer;color:var(--sub)}
@@ -91,6 +97,7 @@ dialog input{width:100%;border:1px solid var(--line);border-radius:8px;padding:8
 dialog label{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px}
 #imgDlg{max-width:900px}
 #imgDlg img{max-width:100%;border-radius:8px;display:block;margin:0 auto 8px}
+#bigImg{touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
 .rule{display:flex;gap:6px;margin:6px 0;font-size:13px;align-items:center}
 .rule span{flex:1}
 a.btn{font:inherit;font-size:15px;color:var(--ink);background:var(--card);border:1px solid var(--line);
@@ -105,7 +112,7 @@ a.btn{font:inherit;font-size:15px;color:var(--ink);background:var(--card);border
   </header>
 
   <div class="box">
-    <div id="prev"><img id="prevImg" alt=""><button id="prevX">✕</button></div>
+    <div id="prev"><div id="prevList"></div><div class="pcount" id="pcount"></div></div>
     <textarea id="inp" placeholder="把複製的東西貼在這裡，或按麥克風用說的"></textarea>
     <div class="row">
       <button id="pasteBtn">📋 貼上</button>
@@ -114,7 +121,7 @@ a.btn{font:inherit;font-size:15px;color:var(--ink);background:var(--card);border
       <span class="grow"></span>
       <button class="main" id="saveBtn">存起來</button>
     </div>
-    <input type="file" id="file" accept="image/*" hidden>
+    <input type="file" id="file" accept="image/*" multiple hidden>
     <div class="hint" id="hint"></div>
   </div>
 
@@ -139,6 +146,7 @@ a.btn{font:inherit;font-size:15px;color:var(--ink);background:var(--card);border
 
 <dialog id="imgDlg">
   <img id="bigImg" alt="">
+  <div class="navrow" id="bigNav"><button id="bigPrev">‹ 上一張</button><span id="bigPos"></span><button id="bigNext">下一張 ›</button></div>
   <div class="txt" id="bigCap" style="font-size:14px;margin-bottom:8px"></div>
   <div class="row"><a class="btn" id="dlLink" download="clip.jpg">下載圖片</a><span class="grow"></span><button onclick="imgDlg.close()">關閉</button></div>
 </dialog>
@@ -215,7 +223,10 @@ let rules = LS.get("cb_rules", []);          // [{kw, cat}]
 let customCats = LS.get("cb_cats", []);      // 自訂分類名稱
 let settingsTs = LS.get("cb_settings_ts", 0);
 let filter = "全部";
-let pendingImg = null;
+let pendingFiles = [];                       // [{file,url}] 還沒存的圖片（存的時候才壓縮）
+const MAX_IMGS = 6, DOC_BUDGET = 800000;     // 雲端一則上限約 1MB，所有圖片共用這個額度
+const imgsOf = it => it.imgs || (it.img ? [it.img] : []);   // 相容舊資料（一則一張 it.img）
+let viewer = {id:null, i:0};
 let cloud = null;
 let editingNote = null, noteDraft = "";
 const allCats = () => [...BUILTIN, ...customCats];
@@ -271,7 +282,8 @@ function pickerRange(){
 }
 
 /* ---------- 圖片壓縮 ---------- */
-function compressImage(file){
+// limit：這張圖壓到幾個字元以內（一張圖時 70 萬，多張時平分額度）
+function compressImage(file,limit){
   return new Promise((res,rej)=>{
     const url=URL.createObjectURL(file);
     const im=new Image();
@@ -279,43 +291,69 @@ function compressImage(file){
       try{
         let scale=Math.min(1,1280/Math.max(im.naturalWidth,im.naturalHeight));
         let out="";
-        for(let round=0; round<6; round++){
+        for(let round=0; round<8; round++){
           const w=Math.max(1,Math.round(im.naturalWidth*scale)), h=Math.max(1,Math.round(im.naturalHeight*scale));
           const c=document.createElement("canvas"); c.width=w; c.height=h;
           const g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,w,h); g.drawImage(im,0,0,w,h);
           let q=0.8; out=c.toDataURL("image/jpeg",q);
-          while(out.length>700000 && q>0.45){ q-=0.1; out=c.toDataURL("image/jpeg",q) }
-          if(out.length<=700000) break;
+          while(out.length>limit && q>0.45){ q-=0.1; out=c.toDataURL("image/jpeg",q) }
+          if(out.length<=limit) break;
           scale*=0.8;
         }
         URL.revokeObjectURL(url);
-        out.length<=900000 ? res(out) : rej(new Error("這張圖太大，壓不下來"));
+        out.length<=(limit>=700000?900000:limit*1.1) ? res(out) : rej(new Error("有張圖太大，壓不下來"));
       }catch(e){ URL.revokeObjectURL(url); rej(e) }
     };
     im.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error("讀不了這張圖（格式不支援）")) };
     im.src=url;
   });
 }
-async function attachFile(file){
-  try{
-    hint("圖片處理中…");
-    pendingImg = await compressImage(file);
-    $("prevImg").src=pendingImg; $("prev").style.display="block";
-    $("inp").placeholder="替這張圖寫幾個字說明（可以用語音），也可以不寫";
-    hint("圖片已加入。文字框現在是圖片說明，按「存起來」");
-  }catch(e){ hint(e.message) }
+async function compressAll(files){
+  const limit=Math.min(700000,Math.floor(DOC_BUDGET/files.length));
+  const out=[];
+  for(const f of files) out.push(await compressImage(f,limit));
+  return out;
+}
+function canLoad(url){
+  return new Promise(r=>{ const im=new Image(); im.onload=()=>r(true); im.onerror=()=>r(false); im.src=url });
+}
+async function attachFiles(files){
+  let skipped=0, bad=0;
+  for(const file of files){
+    if(pendingFiles.length>=MAX_IMGS){ skipped++; continue }
+    const url=URL.createObjectURL(file);
+    if(!(await canLoad(url))){ URL.revokeObjectURL(url); bad++; continue }
+    pendingFiles.push({file,url});
+  }
+  renderPending();
+  let msg = pendingFiles.length ? "圖片已加入。文字框現在是圖片說明，按「存起來」" : "";
+  if(skipped) msg="一則最多 "+MAX_IMGS+" 張，多的 "+skipped+" 張沒加入";
+  if(bad) msg=(msg?msg+"；":"")+bad+" 張讀不了（格式不支援）";
+  if(msg) hint(msg);
+}
+function renderPending(){
+  const n=pendingFiles.length;
+  $("prev").style.display = n ? "block" : "none";
+  $("prevList").innerHTML = pendingFiles.map((p,i)=>
+    `<div class="pv"><img src="${p.url}" alt=""><button data-i="${i}">✕</button></div>`).join("");
+  $("pcount").textContent = n ? n+" / "+MAX_IMGS+" 張" : "";
+  $("inp").placeholder = n ? "替這些圖寫幾個字說明（可以用語音），也可以不寫" : "把複製的東西貼在這裡，或按麥克風用說的";
 }
 function clearImg(){
-  pendingImg=null; $("prev").style.display="none"; $("prevImg").removeAttribute("src");
-  $("inp").placeholder="把複製的東西貼在這裡，或按麥克風用說的";
+  pendingFiles.forEach(p=>URL.revokeObjectURL(p.url));
+  pendingFiles=[]; renderPending();
 }
-$("prevX").onclick=clearImg;
+$("prevList").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-i]"); if(!b) return;
+  const [p]=pendingFiles.splice(+b.dataset.i,1); if(p) URL.revokeObjectURL(p.url);
+  renderPending();
+});
 $("imgBtn").onclick=()=>$("file").click();
-$("file").onchange=e=>{ const f=e.target.files[0]; if(f) attachFile(f); e.target.value="" };
+$("file").onchange=e=>{ const fs=[...e.target.files]; e.target.value=""; if(fs.length) attachFiles(fs) };
 document.addEventListener("paste",e=>{
   if(e.target && e.target.closest && e.target.closest(".noteedit")) return;
-  const f=[...(e.clipboardData?.files||[])].find(x=>x.type.startsWith("image/"));
-  if(f){ e.preventDefault(); attachFile(f) }
+  const fs=[...(e.clipboardData?.files||[])].filter(x=>x.type.startsWith("image/"));
+  if(fs.length){ e.preventDefault(); attachFiles(fs) }
 });
 
 /* ---------- 畫面 ---------- */
@@ -346,6 +384,12 @@ function matchItem(i,ranges,texts,pr){
   }
   return true;
 }
+function imgHtml(i){
+  const im=imgsOf(i);
+  if(!im.length) return "";
+  if(im.length===1) return `<img class="thumb" src="${im[0]}" data-act="view" data-i="0" alt=""${!i.text&&i.h?` style="max-height:${+i.h}px"`:""}>`;
+  return `<div class="thumbs ${im.length%2===0&&im.length<6?"two":""}">${im.map((src,k)=>`<img src="${src}" data-act="view" data-i="${k}" alt="">`).join("")}</div>`;
+}
 function render(){
   if(editingNote){ const ta=document.querySelector(".noteedit textarea"); if(ta) noteDraft=ta.value }
   renderChips();
@@ -365,9 +409,9 @@ function render(){
     return `
     <div class="item ${i.pinned?"pin":""}" data-id="${i.id}">
       ${i.pinned?`<span class="pinmark">📌</span>`:""}
-      ${i.img?`<img class="thumb" src="${i.img}" data-act="view" alt=""${!i.text&&i.h?` style="max-height:${+i.h}px"`:""}>`:""}
+      ${imgHtml(i)}
       ${i.text?`<div class="txt"${i.h?` style="max-height:${+i.h}px"`:""}>${linkify(i.text)}</div>`:""}
-      ${(i.text||i.img)?`<div class="grip" title="上下拖曳調整大小，點兩下恢復預設"><span></span></div>`:""}
+      ${(i.text||imgsOf(i).length===1)?`<div class="grip" title="上下拖曳調整大小，點兩下恢復預設"><span></span></div>`:""}
       ${editing
         ? `<div class="noteedit"><textarea placeholder="寫下備註…">${esc(noteDraft)}</textarea>
              <div class="row"><button class="main" data-act="notesave">存備註</button><button data-act="notecancel">取消</button></div></div>`
@@ -389,7 +433,7 @@ function render(){
 /* ---------- 資料存取（本機 / 雲端） ---------- */
 function saveLocal(){
   if(LS.set("cb_items", items)) return;
-  LS.set("cb_items", items.map(i=>({...i,img:null})));
+  LS.set("cb_items", items.map(i=>({...i,img:null,imgs:null})));
   hint("圖片太多，本機存不下。建議開啟雲端同步，圖片才不會遺失");
 }
 async function cloudSet(it){
@@ -411,9 +455,9 @@ function saveSettings(){
   settingsTs=Date.now(); LS.set("cb_settings_ts",settingsTs);
   pushSettings();
 }
-async function addItem(text,img){
+async function addItem(text,imgs){
   const it={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-    text, img:img||null, note:"", cats:classify(text,!!img), pinned:false, ts:Date.now()};
+    text, img:null, imgs:imgs||[], note:"", cats:classify(text,!!(imgs&&imgs.length)), pinned:false, ts:Date.now()};
   items.unshift(it); saveLocal(); render();
   try{ await cloudSet(it) }catch(e){ hint("雲端存失敗，已先存在本機") }
   return it;
@@ -432,21 +476,35 @@ async function removeItem(id){
 let hintTimer;
 function hint(s){ $("hint").textContent=s; clearTimeout(hintTimer); hintTimer=setTimeout(()=>$("hint").textContent="",4500) }
 
+let saving=false;
 $("saveBtn").onclick=async()=>{
+  if(saving) return;
   const t=$("inp").value.trim();
-  if(!t && !pendingImg){ hint("先貼上、拍張圖或說點什麼"); return }
-  const it=await addItem(t,pendingImg); $("inp").value=""; clearImg();
-  hint("已存，標籤：「"+it.cats.join("、")+"」");
+  if(!t && !pendingFiles.length){ hint("先貼上、拍張圖或說點什麼"); return }
+  saving=true;
+  try{
+    let imgs=[];
+    if(pendingFiles.length){
+      hint("圖片處理中…");
+      try{ imgs=await compressAll(pendingFiles.map(p=>p.file)) }catch(e){ hint(e.message); return }
+      const total=imgs.reduce((n,x)=>n+x.length,0)+t.length;
+      if(total>1000000){ hint("內容太大存不進雲端，請少放幾張圖或縮短文字"); return }
+    }
+    const it=await addItem(t,imgs); $("inp").value=""; clearImg();
+    hint("已存，標籤：「"+it.cats.join("、")+"」");
+  }finally{ saving=false }
 };
 $("inp").addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="Enter") $("saveBtn").click() });
 
 $("pasteBtn").onclick=async()=>{
   try{
     const cis=await navigator.clipboard.read();
+    let got=false;
     for(const ci of cis){
       const it=ci.types.find(t=>t.startsWith("image/"));
-      if(it){ await attachFile(await ci.getType(it)); return }
+      if(it){ await attachFiles([await ci.getType(it)]); got=true }
     }
+    if(got) return;
     for(const ci of cis){
       if(ci.types.includes("text/plain")){
         const t=await (await ci.getType("text/plain")).text();
@@ -469,8 +527,7 @@ $("list").addEventListener("click",async e=>{
   if(act==="addtag") return;
   const box=t.closest(".item"), id=box.dataset.id, it=items.find(i=>i.id===id); if(!it) return;
   if(act==="view"){
-    $("bigImg").src=it.img; $("bigCap").textContent=it.text||"";
-    $("dlLink").href=it.img; $("dlLink").download="clip-"+it.id+".jpg"; $("imgDlg").showModal();
+    viewer={id:it.id,i:+t.dataset.i||0}; showViewer(); $("imgDlg").showModal();
   }else if(act==="copy"){
     try{ await navigator.clipboard.writeText(it.text); t.textContent="已複製"; setTimeout(()=>t.textContent="複製",1200) }catch(err){}
   }else if(act==="pin") updateItem(id,{pinned:!it.pinned});
@@ -485,6 +542,35 @@ $("list").addEventListener("click",async e=>{
     editingNote=null; noteDraft=""; updateItem(id,{note:v});
   }else if(act==="notecancel"){ editingNote=null; noteDraft=""; render() }
   else if(act==="del"){ if(confirm("確定刪除這筆？")) removeItem(id) }
+});
+function showViewer(){
+  const it=items.find(x=>x.id===viewer.id); if(!it) return;
+  const im=imgsOf(it); if(!im.length) return;
+  viewer.i=(viewer.i+im.length)%im.length;
+  $("bigImg").src=im[viewer.i]; $("bigCap").textContent=it.text||"";
+  $("dlLink").href=im[viewer.i]; $("dlLink").download="clip-"+it.id+(im.length>1?"-"+(viewer.i+1):"")+".jpg";
+  $("bigNav").style.display = im.length>1 ? "flex" : "none";
+  $("bigPos").textContent=(viewer.i+1)+" / "+im.length;
+}
+$("bigPrev").onclick=()=>{ viewer.i--; showViewer() };
+$("bigNext").onclick=()=>{ viewer.i++; showViewer() };
+/* 左右滑動 / 鍵盤 ← → 切換圖片 */
+function stepViewer(d){
+  const it=items.find(x=>x.id===viewer.id); if(!it || imgsOf(it).length<2) return;
+  viewer.i+=d; showViewer();
+}
+let swipe=null;
+$("bigImg").draggable=false;
+$("bigImg").addEventListener("pointerdown",e=>{ swipe={x:e.clientX,y:e.clientY} });
+$("bigImg").addEventListener("pointerup",e=>{
+  if(!swipe) return;
+  const dx=e.clientX-swipe.x, dy=e.clientY-swipe.y; swipe=null;
+  if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)*1.5) stepViewer(dx<0?1:-1);
+});
+$("bigImg").addEventListener("pointercancel",()=>{ swipe=null });
+$("imgDlg").addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft"){ e.preventDefault(); stepViewer(-1) }
+  else if(e.key==="ArrowRight"){ e.preventDefault(); stepViewer(1) }
 });
 /* 拖曳把手：調整每一則的高度（存在 it.h，會跟著雲端同步） */
 let gripDrag=null;
